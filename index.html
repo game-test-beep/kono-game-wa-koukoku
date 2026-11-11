@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>このゲームは広告です。</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#111;overflow:hidden;font-family:"Hiragino Maru Gothic ProN","Yu Gothic UI","Meiryo",sans-serif;user-select:none}
+[hidden]{display:none!important}
+#stage{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(100vw,calc(100vh*16/9));aspect-ratio:16/9;container-type:size;overflow:hidden;overflow:clip;background:#000;color:#fff}
+.layer{position:absolute;inset:0}
+#bg svg{width:100%;height:100%;display:block}
+#sprite{position:absolute;left:50%;top:7cqh;height:100cqh;aspect-ratio:300/620;transform:translateX(-50%);transition:transform .35s,opacity .3s;pointer-events:none;filter:drop-shadow(0 .4cqw 1cqw rgba(0,0,0,.35))}
+#sprite.side{transform:translateX(-115%)}
+#sprite.off{opacity:0}
+#sprite svg{width:100%;height:100%}
+/* HUD */
+#hud{position:absolute;top:1.2cqw;left:1.5cqw;right:1.5cqw;display:flex;justify-content:space-between;align-items:center;font-size:1.7cqw;font-weight:bold;pointer-events:none}
+#hud>div{background:rgba(20,24,50,.78);border:.15cqw solid rgba(255,255,255,.6);border-radius:10cqw;padding:.5cqw 1.5cqw;display:flex;align-items:center;gap:1cqw}
+#fbar{width:14cqw;height:1.1cqw;background:#3a2a3a;border-radius:1cqw;overflow:hidden}
+#fbar i{display:block;height:100%;background:linear-gradient(90deg,#ff7aa2,#ff3c6f);transition:width .5s}
+#toast{position:absolute;top:6cqw;right:4cqw;font-size:3cqw;font-weight:bold;color:#ff5c8a;text-shadow:0 0 .4cqw #fff,0 0 .4cqw #fff;opacity:0;pointer-events:none}
+#toast.go{animation:toast 1.4s ease-out}
+@keyframes toast{0%{opacity:0;transform:translateY(2cqw)}20%{opacity:1}100%{opacity:0;transform:translateY(-3cqw)}}
+#sys{position:absolute;left:50%;top:1.2cqw;transform:translateX(-50%);z-index:30;display:flex;gap:.8cqw}
+#sys button{font:inherit;font-size:1.6cqw;font-weight:bold;background:rgba(20,24,50,.78);color:#fff;border:.15cqw solid rgba(255,255,255,.6);border-radius:10cqw;padding:.4cqw 1.4cqw;cursor:pointer}
+#sys button:hover{background:rgba(70,80,160,.95)}
+/* gallery */
+#gal{z-index:14;background:#141832;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.6cqw}
+#gal h2{font-size:2.6cqw;letter-spacing:.2em;color:#ffd400}
+#galGrid{display:flex;flex-wrap:wrap;justify-content:center;gap:1.4cqw;width:92cqw}
+.gc{width:24cqw;background:#232a5c;border:.2cqw solid #fff;border-radius:1cqw;overflow:hidden;color:#fff;font:inherit;padding:0;text-align:center}
+.gc.open{cursor:pointer}.gc.open:hover{border-color:#ffd400;transform:translateY(-.3cqw)}
+.gc img{width:100%;aspect-ratio:16/9;display:block;object-fit:cover}
+.gc .lock{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;font-size:5cqw;background:#0d1028;color:#445}
+.gc b{display:block;font-size:1.45cqw;padding:.5cqw .5cqw .1cqw}
+.gc small{display:block;font-size:1.05cqw;opacity:.8;padding:0 .5cqw .6cqw}
+#galBack{font:inherit;font-size:1.8cqw;font-weight:bold;padding:.7cqw 3cqw;border-radius:5cqw;border:.2cqw solid #fff;background:#e63970;color:#fff;cursor:pointer}
+/* textbox */
+#tb{position:absolute;left:3cqw;right:3cqw;bottom:2cqw;height:27cqh;background:rgba(18,22,52,.88);border:.25cqw solid #ffd9e4;border-radius:1.5cqw;padding:2.6cqw 3cqw 1cqw;cursor:pointer}
+#nm{position:absolute;left:2.5cqw;top:-2cqw;background:#ff5c8a;border:.2cqw solid #fff;border-radius:1cqw;padding:.3cqw 2cqw;font-size:2cqw;font-weight:bold}
+#msg{font-size:2.3cqw;line-height:1.65;letter-spacing:.03em}
+#nx{position:absolute;right:2cqw;bottom:1cqw;font-size:1.8cqw;color:#ffd400;animation:bob .8s infinite alternate}
+@keyframes bob{to{transform:translateY(.5cqw)}}
+/* choices */
+#choices{position:absolute;right:6cqw;top:10cqh;width:48cqw;height:56cqh;display:flex;flex-direction:column;justify-content:center;gap:1.4cqw}
+.ch{font:inherit;font-size:2.1cqw;font-weight:bold;color:#fff;background:rgba(30,36,80,.92);border:.2cqw solid #fff;border-radius:1.2cqw;padding:1.3cqw 2cqw;cursor:pointer;text-align:left;transition:transform .12s,background .12s}
+.ch:hover{transform:translateX(-.6cqw);background:rgba(70,80,160,.95)}
+.ch.adbtn{background:linear-gradient(90deg,#ffd400,#ff9a00);color:#3a1a00;border-color:#fff;font-size:2.4cqw;box-shadow:0 0 1.5cqw #ffd400;animation:pulse .7s infinite alternate;text-align:center}
+.ch.adbtn small{display:block;font-size:1.4cqw}
+@keyframes pulse{to{box-shadow:0 0 3cqw #ffea00,0 0 .6cqw #fff;transform:scale(1.03)}}
+/* day card */
+#card{background:#141832;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:5cqw;font-weight:bold;letter-spacing:.2em;opacity:0;pointer-events:none;transition:opacity .5s}
+#card.on{opacity:1}
+#card small{font-size:2cqw;color:#ffd400;margin-top:1.5cqw;letter-spacing:.1em}
+/* ad */
+#ad{background:#000;z-index:20}
+#adcard{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4cqw}
+#adcard .em{font-size:13cqw;line-height:1.1;animation:wig 1s infinite alternate}
+@keyframes wig{from{transform:rotate(-5deg) scale(1)}to{transform:rotate(5deg) scale(1.08)}}
+#adcard .br{font-size:2cqw;background:rgba(0,0,0,.3);padding:.3cqw 1.6cqw;border-radius:5cqw;margin-bottom:1cqw}
+#adcard .hd{font-size:5cqw;font-weight:900;text-shadow:.25cqw .25cqw 0 rgba(0,0,0,.3);line-height:1.3}
+#adcard .sb{font-size:1.7cqw;margin-top:1cqw;opacity:.9}
+#adcard .cta{margin-top:2.5cqw;font:inherit;font-size:2.4cqw;font-weight:bold;border:0;border-radius:5cqw;padding:1cqw 4cqw;background:#fff;color:#222;cursor:pointer;animation:pulse .6s infinite alternate}
+#adcard .me{height:52cqh;aspect-ratio:300/400;overflow:hidden}
+#adcard .me svg{width:100%}
+#adlabel{position:absolute;left:1.5cqw;top:1.5cqw;background:#ffd400;color:#000;font-size:1.5cqw;font-weight:bold;padding:.2cqw 1cqw;border-radius:.4cqw}
+#adskip{position:absolute;right:1.5cqw;top:1.5cqw;font:inherit;font-size:1.8cqw;font-weight:bold;background:rgba(0,0,0,.7);color:#fff;border:.15cqw solid #fff;border-radius:.6cqw;padding:.6cqw 1.6cqw}
+#adskip.ok{background:#fff;color:#000;cursor:pointer}
+#adnote{position:absolute;left:0;right:0;bottom:2.2cqw;text-align:center;font-size:1.4cqw;opacity:.85}
+#adprog{position:absolute;left:0;bottom:0;height:.8cqw;background:#ffd400;width:0}
+/* title */
+#title{background:linear-gradient(160deg,#ffe95c,#ffb23c 55%,#ff6f91);z-index:10;color:#3a1a2a}
+#title .box{position:absolute;left:6cqw;top:12cqh;width:56cqw}
+#title .tag{display:inline-block;background:#000;color:#ffd400;font-weight:bold;font-size:1.8cqw;padding:.2cqw 1.2cqw;border-radius:.4cqw}
+#title h1{font-size:7.4cqw;line-height:1.2;font-weight:900;color:#fff;text-shadow:.35cqw .35cqw 0 #e63970,-.1cqw -.1cqw 0 #e63970,.6cqw .6cqw 0 rgba(0,0,0,.2);margin:1.5cqw 0}
+#title p{font-size:2cqw;font-weight:bold;line-height:1.7}
+#startBtn{margin-top:3cqw;font:inherit;font-size:3cqw;font-weight:900;color:#fff;background:#e63970;border:.35cqw solid #fff;border-radius:6cqw;padding:1.2cqw 5cqw;cursor:pointer;box-shadow:0 .6cqw 0 #a31f4b}
+#startBtn:active{transform:translateY(.4cqw);box-shadow:0 .2cqw 0 #a31f4b}
+#title .girl{position:absolute;right:4cqw;top:6cqh;height:105cqh;aspect-ratio:300/620}
+#title .girl svg{width:100%;height:100%}
+#ends{font-size:1.5cqw!important;margin-top:1.5cqw}
+#banner{position:absolute;left:0;right:0;bottom:0;height:9cqh;background:#fff;color:#666;border-top:.2cqw solid #ccc;display:flex;align-items:center;justify-content:center;font-size:1.7cqw;gap:1.5cqw}
+#banner b{background:#ffd400;color:#000;padding:.1cqw .8cqw;border-radius:.3cqw;font-size:1.3cqw}
+/* ending */
+#end{background:#000;z-index:15}
+#end img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:cgin 1.2s}
+@keyframes cgin{from{opacity:0;transform:scale(1.04)}}
+#end img{cursor:pointer}
+#end .panel{position:absolute;left:0;right:0;bottom:0;padding:3.5cqw 3cqw 1.5cqw;background:linear-gradient(transparent,rgba(10,12,30,.9) 50%);display:flex;align-items:flex-end;justify-content:space-between;gap:2cqw}
+#end .k{font-size:1.6cqw;color:#ffd400;letter-spacing:.3em}
+#end .n{font-size:3.6cqw;font-weight:900}
+#end .s{font-size:1.5cqw;opacity:.9;margin-top:.3cqw}
+#end button{font:inherit;font-size:1.9cqw;font-weight:bold;padding:.8cqw 3cqw;border-radius:5cqw;border:.2cqw solid #fff;background:#e63970;color:#fff;cursor:pointer;white-space:nowrap}
+#title .row{display:flex;align-items:center;gap:1.2cqw;margin-top:2.4cqw;flex-wrap:wrap}
+#title .row #startBtn{margin-top:0}
+#title .sub{font:inherit;font-size:1.9cqw;font-weight:900;color:#e63970;background:#fff;border:.3cqw solid #e63970;border-radius:6cqw;padding:.8cqw 2.2cqw;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bg" class="layer"></div>
+  <div id="sprite" class="off"></div>
+  <div id="hud"><div id="hudL"></div><div><span>♥</span><div id="fbar"><i></i></div><span id="fnum"></span><span id="adnum"></span></div></div>
+  <div id="toast"></div>
+  <div id="sys"><button id="home" hidden>🏠 ホーム</button><button id="mute">🔊</button></div>
+  <div id="choices" hidden></div>
+  <div id="tb"><div id="nm"></div><div id="msg"></div><div id="nx">▼</div></div>
+  <div id="card" class="layer"><span id="cardT"></span><small id="cardS"></small></div>
+
+  <div id="end" class="layer" hidden>
+    <img id="endImg" alt="">
+    <div class="panel" id="endPanel"><div><div class="k" id="endK"></div><div class="n" id="endN"></div><div class="s" id="endS"></div></div>
+    <button id="endBtn">タイトルへ戻る</button></div>
+  </div>
+
+  <div id="gal" class="layer" hidden>
+    <h2>エンディング一覧</h2><div id="galGrid"></div><button id="galBack">タイトルへ戻る</button>
+  </div>
+
+  <div id="title" class="layer">
+    <div class="box">
+      <span class="tag">広告</span>
+      <h1>このゲームは<br>広告です。</h1>
+      <p>広告を見てほしすぎる女の子と過ごす、7日間の恋愛シミュレーション。<br>※プレイ時間 約20分 ／ ゲーム内の広告はすべて架空です</p>
+      <div class="row"><button id="startBtn">▶ はじめる</button><button id="contBtn" class="sub" hidden></button><button id="galBtn" class="sub">🖼 エンディング一覧</button></div>
+      <p id="ends"></p>
+    </div>
+    <div class="girl" id="titleGirl"></div>
+    <div id="banner"><b>広告</b>ここにバナー広告が入ります（予定地）</div>
+  </div>
+
+  <div id="ad" class="layer" hidden>
+    <div id="adcard"></div>
+    <div id="adlabel">広告</div>
+    <button id="adskip"></button>
+    <div id="adnote">※これは架空の広告です。実在の商品・サービスとは関係ありません。</div>
+    <div id="adprog"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const FAST=new URLSearchParams(location.search).has('fast');
+
+/* =====================================================================
+   立ち絵（SVG）
+   ===================================================================== */
+const SKIN='#ffe9dc',HAIR='#ff8fa3',HAIR2='#f06c88',LINE='#5a2a3a';
+const EXP={
+  normal:{eye:'n',brow:'n',mouth:'s',blush:.35},
+  smile:{eye:'c',brow:'n',mouth:'o',blush:.5},
+  ad:{eye:'star',brow:'n',mouth:'o',blush:.55},
+  pout:{eye:'jito',brow:'a',mouth:'p',blush:.3},
+  sad:{eye:'n',brow:'s',mouth:'sad',blush:.15},
+  blush:{eye:'n',brow:'s',mouth:'w',blush:.95},
+  surprise:{eye:'sup',brow:'n',mouth:'O',blush:.3},
+  shy:{eye:'d',brow:'s',mouth:'w',blush:1}
+};
+function eyeSvg(t,cx){
+  const lash=`<path d="M${cx-13} 158 Q${cx} 146 ${cx+13} 158" stroke="${LINE}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`;
+  const base=`<ellipse cx="${cx}" cy="166" rx="11" ry="14" fill="#fff"/><ellipse cx="${cx}" cy="167" rx="9.5" ry="12.5" fill="#c23a5e"/>`;
+  if(t==='c')return `<path d="M${cx-12} 168 Q${cx} 154 ${cx+12} 168" stroke="${LINE}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`;
+  if(t==='d')return `<path d="M${cx-12} 163 Q${cx} 173 ${cx+12} 163" stroke="${LINE}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`;
+  if(t==='star')return base+`<path d="M${cx} 156 L${cx+3} 164 L${cx+10} 167 L${cx+3} 170 L${cx} 178 L${cx-3} 170 L${cx-10} 167 L${cx-3} 164Z" fill="#ffe45c"/>`+lash;
+  if(t==='sup')return `<ellipse cx="${cx}" cy="166" rx="12" ry="15" fill="#fff" stroke="${LINE}" stroke-width="1.5"/><circle cx="${cx}" cy="167" r="5.5" fill="#7a1f3d"/>`;
+  const full=base+`<ellipse cx="${cx}" cy="170" rx="5.5" ry="8" fill="#6a1836"/><circle cx="${cx-3.5}" cy="161" r="3.3" fill="#fff"/><circle cx="${cx+4}" cy="173" r="1.6" fill="#ffd0dc"/>`;
+  if(t==='jito')return full+`<rect x="${cx-14}" y="148" width="28" height="15" fill="${SKIN}"/><path d="M${cx-13} 163 L${cx+13} 163" stroke="${LINE}" stroke-width="3.5" stroke-linecap="round"/>`;
+  return full+lash;
+}
+function sprite(name){
+  const e=EXP[name]||EXP.normal;
+  const brow={n:`<path d="M109 143 Q122 139 135 143 M165 143 Q178 139 191 143"`,s:`<path d="M108 147 L134 141 M192 147 L166 141"`,a:`<path d="M108 140 L134 146 M192 140 L166 146"`}[e.brow]+` stroke="#c9607a" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
+  const mouth={
+    s:`<path d="M140 200 Q150 209 160 200" stroke="#a84a55" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
+    o:`<path d="M137 198 Q150 221 163 198 Z" fill="#c2414f"/><path d="M143 207 Q150 214 157 207 Q150 204 143 207" fill="#ff9aa8"/>`,
+    p:`<path d="M143 205 Q150 199 157 205" stroke="#a84a55" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
+    sad:`<path d="M141 206 Q150 200 159 206" stroke="#a84a55" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
+    O:`<ellipse cx="150" cy="205" rx="5" ry="7" fill="#c2414f"/>`,
+    w:`<path d="M141 203 q4.5 -4 9 0 t9 0" stroke="#a84a55" stroke-width="2.5" fill="none" stroke-linecap="round"/>`
+  }[e.mouth];
+  return `<svg viewBox="0 0 300 620" xmlns="http://www.w3.org/2000/svg">
+  <path d="M68 150 Q58 38 150 33 Q242 38 232 150 L250 370 Q200 395 150 388 Q100 395 50 370 Z" fill="${HAIR2}"/>
+  <rect x="134" y="222" width="32" height="44" fill="#ffdccb"/>
+  <path d="M74 275 Q48 300 44 445 L76 450 L92 330 Z M226 275 Q252 300 256 445 L224 450 L208 330 Z" fill="#27325a"/>
+  <circle cx="60" cy="455" r="15" fill="${SKIN}"/><circle cx="240" cy="455" r="15" fill="${SKIN}"/>
+  <path d="M60 468 L240 468 L266 620 L34 620 Z" fill="#c9455a"/>
+  <path d="M95 468 L80 620 M130 468 L122 620 M170 468 L178 620 M205 468 L220 620" stroke="#a5344a" stroke-width="3"/>
+  <path d="M76 272 Q150 238 224 272 L238 474 L62 474 Z" fill="#2f3a66"/>
+  <path d="M122 254 L150 318 L178 254 Z" fill="#fff"/>
+  <path d="M122 254 L150 318 L138 330 L104 262 Z M178 254 L150 318 L162 330 L196 262 Z" fill="#3d4a80"/>
+  <path d="M150 296 l-24 -13 v26 z M150 296 l24 -13 v26 z" fill="#e63950"/><circle cx="150" cy="296" r="6" fill="#c42a40"/>
+  <circle cx="150" cy="370" r="5" fill="#ffd400"/><circle cx="150" cy="420" r="5" fill="#ffd400"/>
+  <rect x="186" y="330" width="34" height="16" rx="3" fill="#ffd400"/><text x="203" y="342" font-size="10" font-weight="bold" text-anchor="middle" fill="#222" font-family="sans-serif">PR部</text>
+  <path d="M92 135 Q92 205 150 238 Q208 205 208 135 Q208 72 150 72 Q92 72 92 135Z" fill="${SKIN}"/>
+  <ellipse cx="110" cy="190" rx="13" ry="7" fill="#ff8fa3" opacity="${e.blush*.7}"/><ellipse cx="190" cy="190" rx="13" ry="7" fill="#ff8fa3" opacity="${e.blush*.7}"/>
+  ${eyeSvg(e.eye,122)}${eyeSvg(e.eye,178)}
+  <path d="M84 142 Q78 58 150 53 Q222 58 216 142 Q204 102 184 96 Q178 124 162 100 Q150 128 136 100 Q122 126 112 98 Q94 110 84 142Z" fill="${HAIR}"/>
+  <path d="M86 128 Q72 200 86 270 Q100 225 97 150Z M214 128 Q228 200 214 270 Q200 225 203 150Z" fill="${HAIR}"/>
+  <path d="M150 55 Q138 18 172 24 Q156 32 160 56Z" fill="${HAIR}"/>
+  <path d="M100 80 Q150 60 200 80" stroke="#ffc2cf" stroke-width="5" fill="none" stroke-linecap="round" opacity=".7"/>
+  <rect x="180" y="90" width="34" height="16" rx="3" fill="#ffd400" stroke="#fff" stroke-width="1.5" transform="rotate(12 197 98)"/>
+  <text x="197" y="102" font-size="11" font-weight="bold" text-anchor="middle" fill="#222" font-family="sans-serif" transform="rotate(12 197 98)">AD</text>
+  ${brow}${mouth}
+  </svg>`;
+}
+
+/* =====================================================================
+   背景（SVG）
+   ===================================================================== */
+let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+const R=(x,y,w,h,f,ex='')=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}" ${ex}/>`;
+const TX=(x,y,s,t,f='#fff',ex='')=>`<text x="${x}" y="${y}" font-size="${s}" fill="${f}" font-weight="bold" text-anchor="middle" font-family="sans-serif" ${ex}>${t}</text>`;
+const lg=(id,cs)=>`<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">${cs.map((c,i)=>`<stop offset="${i/(cs.length-1)}" stop-color="${c}"/>`).join('')}</linearGradient></defs>`;
+const wrap=s=>`<svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">${s}</svg>`;
+const cloud=(x,y,k=1)=>`<g fill="#fff" opacity=".85"><ellipse cx="${x}" cy="${y}" rx="${70*k}" ry="${24*k}"/><ellipse cx="${x+40*k}" cy="${y-16*k}" rx="${46*k}" ry="${24*k}"/><ellipse cx="${x-36*k}" cy="${y-10*k}" rx="${36*k}" ry="${18*k}"/></g>`;
+function bgGate(rain){
+  let s=lg('sk',rain?['#566270','#a3adb8']:['#62bcff','#e2f5ff'])+R(0,0,1280,720,'url(#sk)');
+  if(!rain)s+=cloud(220,110)+cloud(980,80,1.2)+cloud(700,160,.7);
+  const wall=rain?'#cbc4b4':'#f6eedc';
+  s+=R(585,120,110,120,wall)+`<polygon points="572,125 640,78 708,125" fill="#b5523b"/><circle cx="640" cy="172" r="27" fill="#fff" stroke="#555" stroke-width="4"/><path d="M640 172 V154 M640 172 H653" stroke="#333" stroke-width="4" stroke-linecap="round"/>`;
+  s+=R(300,232,680,320,wall)+R(288,216,704,22,'#b5523b');
+  for(let r=0;r<3;r++)for(let c=0;c<9;c++){if(r===2&&c===4)continue;s+=R(322+c*72,262+r*88,48,58,rain?'#ffe9a8':'#9fd3f0','stroke="#fff" stroke-width="4"');}
+  s+=R(598,440,84,112,'#7a5a44')+R(638,440,4,112,'#5c4333');
+  s+=R(0,552,1280,168,rain?'#9a927f':'#d8c7a6')+`<polygon points="560,552 720,552 930,720 350,720" fill="${rain?'#b3ab98':'#ecdfc2'}"/>`;
+  s+=R(0,470,200,110,'#b9a58c')+R(1080,470,200,110,'#b9a58c')+R(188,415,58,180,'#8d6e55')+R(1034,415,58,180,'#8d6e55')+R(180,405,74,14,'#6f5441')+R(1026,405,74,14,'#6f5441');
+  const tree=(x)=>R(x-12,380,24,100,'#7a5a44')+`<g fill="${rain?'#d99ab0':'#ffc1d6'}"><circle cx="${x}" cy="310" r="95"/><circle cx="${x-60}" cy="350" r="60"/><circle cx="${x+60}" cy="350" r="60"/></g><g fill="#ffe1ea" opacity=".7"><circle cx="${x-20}" cy="280" r="40"/></g>`;
+  s+=tree(90)+tree(1190);
+  s+=R(262,640,6,60,'#555')+R(392,640,6,60,'#555')+R(250,560,160,84,'#ffd400','stroke="#222" stroke-width="4"')+TX(330,598,24,'広告募集中','#222')+TX(330,628,15,'アドバンス学園','#222');
+  if(rain){seed=11;let l='';for(let i=0;i<170;i++){const x=rnd()*1380-50,y=rnd()*720;l+=`M${x} ${y} l-8 34 `;}s+=`<path d="${l}" stroke="#dfe9f2" stroke-width="2" opacity=".55"/>`+R(0,0,1280,720,'#1a2540','opacity=".25"');}
+  return wrap(s);
+}
+function bgClass(){
+  let s=R(0,0,1280,720,'#f3e7cf')+R(0,540,1280,180,'#b98b5e')+R(0,530,1280,14,'#8b6642');
+  s+=R(330,130,640,270,'#8b5a2b')+R(344,144,612,242,'#2f5d4a')+R(344,378,612,10,'#d9c9a8');
+  s+=TX(460,200,30,'今日のめあて','#e8f2ea','opacity=".85"')+TX(650,270,40,'広告は最後まで見る','#fff','opacity=".9"')+TX(880,360,20,'日直：広瀬','#e8f2ea','opacity=".8"');
+  for(const x of [40,1060]){s+=R(x,120,180,300,'#fff')+lg('w'+x,['#7cc8ff','#e6f6ff'])+R(x+10,130,160,280,`url(#w${x})`)+R(x+86,130,8,280,'#fff')+R(x+10,266,160,8,'#fff');}
+  s+=`<circle cx="640" cy="80" r="30" fill="#fff" stroke="#444" stroke-width="5"/><path d="M640 80 V60 M640 80 L656 88" stroke="#333" stroke-width="4" stroke-linecap="round"/>`;
+  for(let r=0;r<2;r++)for(let c=0;c<5;c++){const x=90+c*240+(r?-40:0),y=560+r*80,w=170+r*30;s+=R(x,y,w,16,'#e2b377')+R(x+8,y+16,8,160,'#888')+R(x+w-16,y+16,8,160,'#888');}
+  return wrap(s);
+}
+function bgClub(){
+  seed=23;let s=R(0,0,1280,720,'#e9dcc3')+R(0,560,1280,160,'#8f6a48')+R(0,552,1280,12,'#6d4f35');
+  const cols=['#ff6b6b','#ffd400','#4dabf7','#69db7c','#f783ac','#ff922b','#9775fa','#fff'],ws=['SALE','新発売','CM','特価','限定','無料','50%','NEW','広告','CLICK'];
+  for(let i=0;i<16;i++){const x=40+(i%8)*152+rnd()*20,y=50+Math.floor(i/8)*210+rnd()*30,w=95+rnd()*35,h=130+rnd()*40,c=cols[Math.floor(rnd()*cols.length)],a=(rnd()*10-5).toFixed(1);
+    s+=`<g transform="rotate(${a} ${x+w/2} ${y+h/2})">`+R(x,y,w,h,c,'stroke="#fff" stroke-width="5"')+TX(x+w/2,y+h/2+8,22,ws[i%ws.length],c==='#fff'||c==='#ffd400'?'#333':'#fff')+R(x+w/2-10,y-6,20,12,'#d6c7a0','opacity=".8"')+`</g>`;}
+  s+=R(820,470,400,22,'#a67c52')+R(840,492,14,150,'#7a5a3a')+R(1186,492,14,150,'#7a5a3a');
+  s+=R(900,320,230,152,'#4a4a52','rx="14"')+R(918,336,160,120,'#111','rx="18"');
+  ['#fff','#ffe600','#00d8d8','#00c800','#e000e0','#e00000','#0000d0'].forEach((c,i)=>s+=R(924+i*21.2,342,21.2,108,c));
+  s+=`<circle cx="1104" cy="360" r="9" fill="#888"/><circle cx="1104" cy="392" r="9" fill="#888"/><path d="M980 320 L950 270 M1040 320 L1080 266" stroke="#555" stroke-width="4"/>`;
+  s+=R(60,450,260,14,'#a67c52')+R(60,464,12,170,'#7a5a3a')+R(308,464,12,170,'#7a5a3a');for(let i=0;i<9;i++)s+=R(76+i*26,380+rnd()*20,20,70,cols[i%7]);
+  return wrap(s);
+}
+function bgStreet(){
+  seed=5;let s=lg('sk',['#58b8ff','#dff3ff'])+R(0,0,1280,720,'url(#sk)')+cloud(300,90)+cloud(900,120,.8);
+  const shops=[['#f4a261','たい焼き','#e63946'],['#a8dadc','くすり','#1d3557'],['#ffe5a0','本','#6a4c93'],['#ffb4c2','カフェ','#7a4a2a'],['#c7f0bd','文具','#2a7a3a'],['#d0c4f7','写真館','#333']];
+  shops.forEach((sh,i)=>{const x=i*215-5,h=300+rnd()*90,y=560-h;
+    s+=R(x,y,210,h,sh[0],'stroke="#fff" stroke-width="3"');
+    for(let k=0;k<2;k++)s+=R(x+30+k*90,y+30,60,70,'#cfeaff','stroke="#fff" stroke-width="5"');
+    s+=R(x+10,400,190,46,sh[2])+TX(x+105,433,28,sh[1]);
+    for(let k=0;k<7;k++)s+=`<polygon points="${x+k*30},446 ${x+k*30+30},446 ${x+k*30+24},478 ${x+k*30-6},478" fill="${k%2?'#fff':sh[2]}"/>`;
+    s+=R(x+30,480,150,80,'#5c4a3d')+R(x+40,490,60,70,'#ffe9b0')+R(x+110,490,60,70,'#ffe9b0');
+    if(i%2===0)s+=R(x+150,y-70,90,60,'#ffd400','stroke="#222" stroke-width="3"')+TX(x+195,y-32,22,'広告','#222')+R(x+192,y-10,6,12,'#444');});
+  s+=R(0,560,1280,160,'#c9c2b5')+R(0,600,1280,120,'#8d8a85');for(let i=0;i<8;i++)s+=R(40+i*170,652,90,10,'#f2f2f2');
+  for(const x of [240,1020])s+=R(x,300,10,270,'#444')+`<circle cx="${x+5}" cy="292" r="18" fill="#fff8d0" stroke="#444" stroke-width="4"/>`+R(x+10,330,60,90,'#e63970')+TX(x+40,385,20,'祭');
+  return wrap(s);
+}
+function bgPark(){
+  let s=lg('sk',['#6a5aa8','#ff9e6b','#ffe0a3'])+R(0,0,1280,720,'url(#sk)')+`<circle cx="930" cy="420" r="90" fill="#fff3c4" opacity=".95"/><circle cx="930" cy="420" r="140" fill="#ffd27a" opacity=".3"/>`;
+  s+=`<g fill="#4a3a66" opacity=".7"><rect x="0" y="430" width="1280" height="90"/><rect x="100" y="380" width="80" height="60"/><rect x="420" y="360" width="60" height="80"/><rect x="560" y="390" width="120" height="50"/><rect x="1080" y="370" width="90" height="70"/></g>`;
+  const tree=(x,k)=>R(x-14*k,360,28*k,200,'#3c2a2a')+`<g fill="#2f4a3a"><circle cx="${x}" cy="${300}" r="${120*k}"/><circle cx="${x-80*k}" cy="340" r="${80*k}"/><circle cx="${x+80*k}" cy="340" r="${80*k}"/></g>`;
+  s+=tree(120,1.1)+tree(1200,.9)+R(0,520,1280,200,'#5b6b3f')+`<path d="M0 620 Q640 560 1280 630 V720 H0Z" fill="#c9a877"/>`;
+  s+=R(420,470,380,16,'#7a4a2a')+R(420,520,380,18,'#8a5a36')+R(440,538,14,60,'#333')+R(766,538,14,60,'#333')+R(430,420,360,54,'#e9e2d0','stroke="#7a4a2a" stroke-width="6"')+TX(610,446,18,'住まいのことなら ○○不動産','#9a8f7a')+TX(610,466,13,'TEL ▒▒-▒▒▒▒','#b3a994');
+  s+=R(960,250,10,330,'#2a2a33')+`<circle cx="965" cy="240" r="22" fill="#fff6c9"/><circle cx="965" cy="240" r="50" fill="#fff6c9" opacity=".25"/>`;
+  return wrap(s);
+}
+function bgStation(){
+  seed=99;let s=lg('sk',['#070b24','#2b2a5c'])+R(0,0,1280,720,'url(#sk)');
+  for(let i=0;i<60;i++)s+=`<circle cx="${rnd()*1280}" cy="${rnd()*250}" r="${rnd()*1.8+.4}" fill="#fff" opacity="${rnd()*.7+.3}"/>`;
+  for(let i=0;i<9;i++){const x=i*150-20,h=260+rnd()*240,w=140;s+=R(x,600-h,w,h,i%2?'#151a3d':'#1d2350');
+    for(let r=0;r<Math.floor(h/36)-1;r++)for(let c=0;c<4;c++)if(rnd()>.4)s+=R(x+14+c*30,600-h+16+r*36,18,22,rnd()>.3?'#ffe9a0':'#9ad8ff','opacity=".9"');}
+  s+=lg('vs',['#ff5c8a','#ffb23c'])+R(430,170,420,240,'#000','stroke="#888" stroke-width="8"')+R(440,180,400,220,'url(#vs)')+TX(640,285,64,'AD')+TX(640,340,26,'あなたに届け、この15秒。');
+  s+=R(100,300,120,44,'#00e0ff','opacity=".9"')+TX(160,332,26,'カラオケ','#003')+R(1040,260,150,50,'#ff3c6f')+TX(1115,295,26,'居酒屋')+R(960,360,60,130,'#ffd400')+TX(990,400,24,'広','#222')+TX(990,440,24,'告','#222')+TX(990,478,18,'募集','#222');
+  s+=R(0,600,1280,120,'#0d1028')+`<g opacity=".25">`+R(440,600,400,90,'url(#vs)')+`</g>`+R(0,596,1280,6,'#3a3f70');
+  return wrap(s);
+}
+function bgRoof(){
+  let s=lg('sk',['#3d4a9a','#ff8f70','#ffd9a0'])+R(0,0,1280,720,'url(#sk)')+`<circle cx="300" cy="430" r="70" fill="#fff0c0"/>`;
+  s+=`<g fill="#ffd0c0" opacity=".7"><ellipse cx="800" cy="160" rx="200" ry="26"/><ellipse cx="500" cy="240" rx="160" ry="18"/><ellipse cx="1050" cy="300" rx="180" ry="20"/></g>`;
+  seed=42;for(let i=0;i<22;i++){const w=40+rnd()*50,h=40+rnd()*110;s+=R(i*60-10,520-h,w,h,'#4a3a6a','opacity=".8"');}
+  s+=R(0,515,1280,205,'#9a958f')+R(0,515,1280,10,'#7d7873');
+  let f='';for(let x=-20;x<1300;x+=28)f+=`M${x} 300 L${x+110} 520 M${x} 300 L${x-110} 520 `;
+  s+=`<path d="${f}" stroke="#e8e8e8" stroke-width="1.5" opacity=".55"/>`+R(0,296,1280,8,'#dcdcdc');for(let x=60;x<1280;x+=290)s+=R(x,296,10,230,'#dcdcdc');
+  for(let i=0;i<5;i++)s+=R(0,560+i*36,1280,2,'#827d78');
+  return wrap(s);
+}
+function bgCafe(){
+  let s=R(0,0,1280,720,'#6b4a3a')+R(0,520,1280,200,'#4a3226');
+  s+=R(80,110,520,330,'#3a271e')+lg('cw',['#8fd0ff','#e8f6ff'])+R(96,126,488,298,'url(#cw)')+R(336,126,8,298,'#3a271e');
+  s+=`<g fill="#b9c7d6" opacity=".8"><rect x="120" y="260" width="90" height="164"/><rect x="230" y="220" width="80" height="204"/><rect x="380" y="280" width="110" height="144"/></g>`;
+  s+=R(760,120,380,260,'#2a2a2a','stroke="#c9a877" stroke-width="10"')+TX(950,175,30,'MENU','#ffe9b0')+TX(950,225,22,'カフェラテ ……… 480','#fff')+TX(950,265,22,'広告つきラテ …… 0','#ffd400')+TX(950,305,22,'たい焼きパフェ … 680','#fff')+TX(950,345,16,'※広告つきラテは最後までご覧ください','#ccc');
+  for(const x of [260,640,1020])s+=R(x-2,0,4,70,'#222')+`<path d="M${x-40} 100 Q${x} 50 ${x+40} 100Z" fill="#e8b04a"/><circle cx="${x}" cy="104" r="10" fill="#fff6c9"/><circle cx="${x}" cy="130" r="90" fill="#ffe9a0" opacity=".12"/>`;
+  s+=`<ellipse cx="640" cy="640" rx="520" ry="70" fill="#c99a6a"/><ellipse cx="640" cy="630" rx="520" ry="70" fill="#e0b888"/>`;
+  s+=`<ellipse cx="900" cy="610" rx="60" ry="16" fill="#fff"/>`+R(858,560,84,50,'#fff','rx="10"')+`<ellipse cx="900" cy="562" rx="40" ry="10" fill="#c9966a"/>`;
+  return wrap(s);
+}
+const BG={gate:()=>bgGate(false),rain:()=>bgGate(true),class:bgClass,club:bgClub,street:bgStreet,park:bgPark,station:bgStation,roof:bgRoof,cafe:bgCafe};
+
+/* =====================================================================
+   架空広告
+   将来 AdSense 等の本物の広告に差し替える場合は showAd() の中身だけを
+   置き換えればよい（「視聴完了したら resolve する Promise を返す」契約）。
+   ===================================================================== */
+const ADS=[
+  {e:'🧩',b:'パズル＆ピン抜き王国',h:'IQ120以上しか<br>解けない！？',s:'※実際のゲーム内容とは異なります',c:'いますぐ失敗する',g:['#ff9a3c','#ff3c6f']},
+  {e:'🥬',b:'青汁「ミドリのやつ」',h:'まずい！<br>でも、もう一杯はいらない！',s:'初回限定 980円（2回目以降 9,800円）',c:'定期コースを見る',g:['#2f9e44','#94d82d']},
+  {e:'💼',b:'転職サイト「テンショクン」',h:'あなたの市場価値、<br>高すぎ……？',s:'※診断結果には個人差があります',c:'無料で診断',g:['#1971c2','#4dabf7']},
+  {e:'📚',b:'マンガアプリ「ヨムヨム」',h:'「お前を追放する！」<br>→ 実は最強でした',s:'続きはアプリで（アプリでも続きは有料）',c:'1話だけ読む',g:['#6741d9','#da77f2']},
+  {e:'🎧',b:'英会話「ペラリンゴ」',h:'聞き流すだけで、<br>聞き流せるようになる！',s:'受講者の98%が「聞き流せた」と回答',c:'無料体験',g:['#e8590c','#ffd43b']},
+  {e:'🐟',b:'たい焼き「商店街の鯛」',h:'しっぽまで、あんこ。',s:'アドバンス学園前商店街 ／ 包み紙広告 募集中',c:'お店を探す',g:['#a0522d','#f4a261']},
+  {e:'⚔️',b:'戦略ゲーム「三国覇道ウォーズ伝説」',h:'今ならSSR武将<br>100連無料！',s:'※武将は全員同じ顔です',c:'天下を取る',g:['#7a1f1f','#e03131']},
+  {e:'📱',b:'格安スマホ「モバイル999」',h:'月額999円<small style="font-size:.4em">（税別・手数料別・条件別）</small>',s:'※表示価格は37ヶ月目以降の料金とは異なります',c:'小さい字を読む',g:['#0b7285','#3bc9db']},
+  {e:'🧴',b:'育毛トニック「フサリゲン」',h:'まだ「まだ大丈夫」と<br>思っていませんか？',s:'※効果には個人差と毛根差があります',c:'頭皮チェック',g:['#364fc7','#748ffc']},
+  {e:'🌙',b:'睡眠アプリ「ネムレル」',h:'この広告を見ているあなた、<br>寝てください。',s:'※現在時刻に関わらず表示しています',c:'おやすみ',g:['#1a1b4b','#5f3dc4']}
+];
+let adOrder=[];
+function showAd(special){
+  return new Promise(res=>{
+    const sec=FAST?1:5,prevM=AU.want;music('ad');
+    if(special){
+      $('adcard').style.background='linear-gradient(135deg,#ff8fa3,#ffd400)';
+      $('adcard').innerHTML=`<div style="display:flex;align-items:center;gap:3cqw"><div class="me">${sprite('smile')}</div><div><div class="br">広告研究部（手づくり）</div><div class="hd">見てくれて、<br>ありがとう。</div><div class="sb">部員募集中（定員：あと1名）</div><button class="cta">入部する（気持ちだけ）</button></div></div>`;
+    }else{
+      if(!adOrder.length)adOrder=ADS.map((_,i)=>i).sort(()=>Math.random()-.5);
+      const a=ADS[adOrder.pop()];
+      $('adcard').style.background=`linear-gradient(135deg,${a.g[0]},${a.g[1]})`;
+      $('adcard').innerHTML=`<div class="em">${a.e}</div><div class="br">${a.b}</div><div class="hd">${a.h}</div><div class="sb">${a.s}</div><button class="cta">${a.c}</button>`;
+    }
+    $('adcard').querySelector('.cta').onclick=ev=>{ev.target.textContent='※架空の広告なのでリンク先はありません';};
+    const sk=$('adskip'),pg=$('adprog');let left=sec;
+    sk.className='';sk.textContent=`あと ${left} 秒`;
+    pg.style.transition='none';pg.style.width='0';
+    $('ad').hidden=false;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{pg.style.transition=`width ${sec}s linear`;pg.style.width='100%';}));
+    const g=GEN;
+    const tm=setInterval(()=>{if(g!==GEN){clearInterval(tm);return;}left--;if(left>0){sk.textContent=`あと ${left} 秒`;}else{clearInterval(tm);sk.textContent='✕ 閉じる';sk.className='ok';sk.onclick=()=>{sk.onclick=null;$('ad').hidden=true;music(prevM);res();};}},1000);
+  });
+}
+
+/* =====================================================================
+   エンジン
+   ===================================================================== */
+/* ---------- BGM・効果音（WebAudioでその場で合成。音声ファイルなし） ---------- */
+const AU={ctx:null,master:null,muted:false,name:null,want:null,bus:null,timer:null};
+const mtof=m=>440*Math.pow(2,(m-69)/12);
+const TRACKS={
+  // 日常：明るいピコピコ
+  day:{bpm:132,style:'pop',w:'square',v:.07,
+    ch:[[60,64,67],[57,60,64],[53,57,60],[55,59,62]],
+    mel:[76,0,72,76,79,0,76,0, 72,0,69,72,76,0,72,0, 69,72,77,0,76,0,72,0, 74,0,71,74,79,0,0,0,
+         76,0,72,76,79,0,84,0, 81,0,76,72,76,0,0,0, 77,76,74,72,69,0,72,0, 74,0,71,0,67,0,0,0]},
+  // しっとり：夕方・雨・屋上
+  soft:{bpm:84,style:'soft',w:'sine',v:.13,
+    ch:[[53,57,60],[55,59,62],[52,55,59],[57,60,64]],
+    mel:[69,0,72,0,77,0,76,0, 74,0,0,0,71,0,74,0, 76,0,0,0,71,0,67,0, 72,0,0,0,0,0,0,0,
+         69,0,72,0,77,0,81,0, 79,0,0,0,74,0,79,0, 76,0,79,0,83,0,79,0, 81,0,0,0,0,0,0,0]},
+  // 広告：うさんくさいジングル
+  ad:{bpm:168,style:'pop',w:'sawtooth',v:.06,
+    ch:[[60,64,67],[53,57,60],[55,59,62],[60,64,67]],
+    mel:[72,72,76,79,84,0,79,0, 77,77,81,84,89,0,84,0, 79,79,83,86,91,0,86,0, 84,0,79,0,84,84,84,0]}
+};
+function auInit(){
+  if(AU.ctx){AU.ctx.resume();return;}
+  const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
+  AU.ctx=new C();AU.master=AU.ctx.createGain();AU.master.gain.value=AU.muted?0:.6;AU.master.connect(AU.ctx.destination);
+  const w=AU.want;AU.name=null;music(w);
+}
+function note(dest,m,t,d,type,v){
+  const c=AU.ctx,o=c.createOscillator(),g=c.createGain();
+  o.type=type;o.frequency.value=mtof(m);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.012);g.gain.exponentialRampToValueAtTime(.0008,t+d);
+  o.connect(g);g.connect(dest);o.start(t);o.stop(t+d+.03);
+}
+function schedule(tr,bus,t0){
+  const e=30/tr.bpm,bars=tr.mel.length/8;
+  for(let b=0;b<bars;b++){
+    const ch=tr.ch[b%tr.ch.length],tb=t0+b*8*e;
+    for(let i=0;i<8;i++){
+      const t=tb+i*e,m=tr.mel[b*8+i];
+      if(m){let len=1;while(i+len<8&&!tr.mel[b*8+i+len])len++;note(bus,m,t,e*(tr.style==='soft'?len+.6:Math.min(len,2)*.9),tr.w,tr.v);}
+      if(tr.style==='pop'){
+        if(i%2===0)note(bus,ch[0]-12+((i/2)%2?7:0),t,e*1.6,'triangle',.16);
+        else ch.forEach(n=>note(bus,n,t,e*.5,'square',.018));
+      }else{
+        note(bus,ch[[0,1,2,1][i%4]]+(i>=4?12:0),t,e*1.8,'triangle',.06);
+        if(i===0)note(bus,ch[0]-12,t,e*7.5,'sine',.14);
+      }
+    }
+  }
+  return bars*8*e;
+}
+function music(name){
+  AU.want=name;
+  if(!AU.ctx||AU.name===name)return;
+  const c=AU.ctx;clearTimeout(AU.timer);
+  if(AU.bus){const old=AU.bus;old.gain.setValueAtTime(old.gain.value,c.currentTime);old.gain.linearRampToValueAtTime(0,c.currentTime+.25);setTimeout(()=>old.disconnect(),400);AU.bus=null;}
+  AU.name=name;if(!name||!TRACKS[name])return;
+  const tr=TRACKS[name],bus=c.createGain();bus.connect(AU.master);AU.bus=bus;
+  let t0=c.currentTime+.15;
+  const loop=()=>{t0+=schedule(tr,bus,t0);AU.timer=setTimeout(loop,Math.max(50,(t0-c.currentTime-.4)*1000));};
+  loop();
+}
+function sfx(kind){
+  if(!AU.ctx)return;
+  const t=AU.ctx.currentTime,seq={pick:[84,91],up:[76,79,84,88],down:[67,63,58]}[kind]||[];
+  seq.forEach((m,i)=>note(AU.master,m,t+i*.07,.18,kind==='down'?'triangle':'square',.08));
+}
+const BGM={gate:'day',class:'day',club:'day',street:'day',cafe:'day',rain:'soft',park:'soft',roof:'soft',station:'soft'};
+$('mute').onclick=e=>{e.stopPropagation();AU.muted=!AU.muted;e.currentTarget.textContent=AU.muted?'🔇':'🔊';auInit();if(AU.master)AU.master.gain.value=AU.muted?0:.6;};
+
+const S={};
+let onAdv=null,GEN=0; // GEN: ホームに戻ったら進行中のシナリオを止めるための世代番号
+const MEM={};
+const store={
+  get(k){try{const v=localStorage.getItem(k);if(v!==null)return JSON.parse(v);}catch(e){}return MEM[k];},
+  set(k,v){MEM[k]=v;try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}},
+  del(k){delete MEM[k];try{localStorage.removeItem(k);}catch(e){}}
+};
+function advance(){if(onAdv)onAdv();}
+$('stage').addEventListener('click',advance);
+document.addEventListener('keydown',e=>{if((e.key===' '||e.key==='Enter')&&$('ad').hidden&&$('title').hidden){e.preventDefault();advance();}});
+$('ad').addEventListener('click',e=>e.stopPropagation());
+
+function setBg(n){S.bg=n;$('bg').innerHTML=BG[n]();music(BGM[n]);}
+function setExp(n){$('sprite').innerHTML=sprite(n);}
+function showSprite(v){$('sprite').classList.toggle('off',!v);}
+function side(v){$('sprite').classList.toggle('side',v);}
+const WD=['','月','火','水','木','金','土','日'];
+function hud(label){
+  if(label!==undefined)S.label=label;
+  $('hudL').textContent=`${S.day}日目（${WD[S.day]}） ${S.label||''}`;
+  $('fbar').firstElementChild.style.width=S.f+'%';
+  $('fnum').textContent=S.f;
+  $('adnum').textContent=`📺 ${S.ads}/5`;
+}
+function fx(o){
+  if(!o)return;
+  const before=S.f;
+  S.f=Math.max(0,Math.min(100,S.f+(o.f||0)));S.h+=(o.h||0);
+  const d=S.f-before;
+  if(o.f){sfx(o.f>0?'up':'down');const t=$('toast');t.textContent=(o.f>0?'♥ +':'♥ ')+o.f;t.style.color=o.f>0?'#ff5c8a':'#5c8aff';t.classList.remove('go');void t.offsetWidth;t.classList.add('go');}
+  hud();return d;
+}
+function say(name,text){
+  text=text.replace('{ads}',S.ads);
+  return new Promise(res=>{
+    const nm=$('nm'),msg=$('msg'),nx=$('nx');
+    nm.textContent=name;nm.style.visibility=name?'visible':'hidden';
+    nm.style.background=name==='あなた'?'#4a78d0':'#ff5c8a';
+    msg.style.color=name?'#fff':'#dfe6ff';
+    let i=0;msg.textContent='';nx.hidden=true;const g=GEN;
+    const done=()=>{clearInterval(tm);if(g!==GEN)return;msg.textContent=text;nx.hidden=false;onAdv=()=>{onAdv=null;res();};};
+    const tm=setInterval(()=>{if(g!==GEN){clearInterval(tm);return;}i++;msg.textContent=text.slice(0,i);if(i>=text.length)done();},FAST?2:26);
+    onAdv=done;
+  });
+}
+function pick(btns){
+  return new Promise(res=>{
+    const box=$('choices');box.innerHTML='';
+    btns.forEach((b,i)=>{const el=document.createElement('button');el.className='ch'+(b.ad?' adbtn':'');el.innerHTML=b.label;
+      el.onclick=e=>{e.stopPropagation();sfx('pick');box.hidden=true;side(false);res(i);};box.appendChild(el);});
+    side(true);box.hidden=false;
+  });
+}
+const AD_LABEL='📺 広告を見る<small>（好感度 大UP！！）</small>';
+async function watchAd(gain){
+  await showAd(S.ads===4);
+  S.ads++;fx({f:gain});
+}
+async function quotaCheck(){
+  if(S.ads>=5&&!S.quota){S.quota=true;await run(QUOTA);}
+}
+async function choose(opts,adLines){
+  const i=await pick([...opts.map(o=>({label:o[0]})),{label:AD_LABEL,ad:true}]);
+  if(i===opts.length){await watchAd(5);await run(adLines);await quotaCheck();}
+  else{fx(opts[i][1]);await run(opts[i][2]);}
+}
+async function run(lines){
+  for(const L of lines){
+    switch(L[0]){
+      case 'bg':setBg(L[1]);showSprite(!!L[2]);break;
+      case 'show':showSprite(true);break;
+      case 'hide':showSprite(false);break;
+      case 't':setExp(L[1]);showSprite(true);await say('告葉',L[2]);break;
+      case 'y':await say('あなた',L[1]);break;
+      case 'm':await say('',L[1]);break;
+      case 'fx':fx(L[1]);break;
+      case 'c':await choose(L[1],L[2]);break;
+    }
+  }
+}
+function dayCard(t,s){
+  const g=GEN;
+  return new Promise(res=>{$('cardT').textContent=t;$('cardS').textContent=s||'';$('card').classList.add('on');
+    setTimeout(()=>{if(g!==GEN)return;$('card').classList.remove('on');setTimeout(()=>{if(g===GEN)res();},FAST?50:500);},FAST?100:1500);});
+}
+
+/* =====================================================================
+   シナリオ
+   t=告葉のセリフ / y=主人公のセリフ / m=地の文 / c=選択肢（広告の選択肢は自動で追加）
+   ===================================================================== */
+const DAYS={
+1:[['bg','gate'],
+ ['m','私立アドバンス学園。今日からここが、僕の通う学校だ。'],
+ ['m','校門をくぐろうとした、そのとき——'],
+ ['t','ad','「そこのキミ！ 転校生だよね！？ 5秒だけ時間ある！？」'],
+ ['y','「え、5秒？」'],
+ ['t','smile','「5秒たったらスキップしていいから！ ね！」'],
+ ['m','初対面で『スキップされる前提』の話しかけ方をしてくる女子は、初めて見た。'],
+ ['t','normal','「わたし、広瀬告葉（ひろせ つぐは）。2年、広告研究部の部長で、部員。以上1名！」'],
+ ['t','ad','「単刀直入に言うね。——広告、見ない？」'],
+ ['y','「……部活の勧誘じゃなくて？」'],
+ ['t','normal','「勧誘はそのあと！ まずは広告！ 順番がだいじ！」'],
+ ['c',[
+  ['「話くらいは聞くよ」',{f:3,h:2},[['t','smile','「ほんと！？ やった、視聴完了率100%の顔してると思ったんだ！」'],['m','どんな顔だ。']]],
+  ['「怪しいので失礼します」',{f:-2},[['t','pout','「あっ、スキップ早い！ まだ2秒！ せめて5秒は見て！」'],['m','結局、腕をつかまれて逃げられなかった。']]]
+ ],[['t','ad','「み、見てくれた……！ 最後まで……！ キミ、もしかして運命の人？」'],['m','広告を1本見ただけで、運命を感じられてしまった。']]],
+ ['t','normal','「この学園ね、広告収入で運営されてるの。校舎も、購買のパンも、ぜんぶ」'],
+ ['t','sad','「でも最近、みんな広告を飛ばすでしょ。だから広告研究部は、今週の日曜までに『5本、最後まで見てもらう』っていうノルマを達成できないと、廃部なの」'],
+ ['y','「5本って、少なくない？」'],
+ ['t','sad','「……今年度の実績、0本なの」'],
+ ['t','ad','「というわけで！ 今日から1週間、わたしと仲良くして、ついでに広告も見てほしいな！」'],
+ ['m','『ついで』の比重がおかしい気がするが、こうして僕の1週間が始まった。']],
+2:[['bg','class'],
+ ['m','昼休み。弁当を広げようとすると、当然のように隣の席が埋まった。'],
+ ['t','smile','「おじゃましまーす。この時間は、広瀬告葉の提供でお送りします」'],
+ ['y','「提供って、何を」'],
+ ['t','normal','「卵焼き。わたしの手作り。……ただし！」'],
+ ['t','ad','「広告1本につき1個！ いまなら初回限定、2個！」'],
+ ['m','視聴条件のついた卵焼きは初めてだ。'],
+ ['c',[
+  ['「普通に交換しよう。唐揚げあげるから」',{f:3,h:2},[['t','surprise','「えっ、無料で……？ 条件なしで……？」'],['t','blush','「……そ、そういうの、慣れてないんだけど。……いただきます」']]],
+  ['「卵焼きはいらないかな」',{f:-2},[['t','pout','「むぅ。コンバージョンしない……。訴求が弱かったかな……」']]]
+ ],[['t','smile','「毎度あり！ はい、約束の2個！ 『あーん』は有料オプションです」'],['m','卵焼きは甘くて、妙にうまかった。']]],
+ ['t','normal','「ねえ、キミってさ、広告きらい？」'],
+ ['y','「好きな人のほうが珍しいんじゃないか」'],
+ ['t','sad','「だよねえ。みんな、じゃまだって言うもん」'],
+ ['t','smile','「でもわたしは好き。だから、キミにも好きになってほしいな。広告も。……ついでに、わたしも」'],
+ ['m','最後の一言は、チャイムにまぎれて、よく聞こえなかったことにした。']],
+3:[['bg','club'],
+ ['m','放課後、広告研究部の部室に招かれた。壁一面に古いポスターとチラシ。年代物のブラウン管テレビまである。'],
+ ['t','smile','「ようこそ！ 部員1名、備品多数の広告研究部へ！」'],
+ ['y','「これ全部、集めたの？」'],
+ ['t','normal','「うん。捨てられちゃう広告って、かわいそうでしょ」'],
+ ['t','normal','「小さいころね、家族でテレビを見てたの。番組のあいだはみんな黙ってるのに、CMになると急にしゃべり出すんだ」'],
+ ['t','smile','「『今日の晩ごはん何？』とか、『このCMの歌、好き』とか。わたし、あの時間がいちばん好きだった」'],
+ ['t','blush','「広告ってね、誰かが誰かに『見てほしい』って思った気持ちの、かたちなんだよ」'],
+ ['m','……思っていたより、ちゃんとした理由だった。'],
+ ['c',[
+  ['「いい話だな。ちょっと見直した」',{f:3,h:3},[['t','surprise','「み、見直したって、いままでどう見てたの！？」'],['t','blush','「……でも、ありがと。この話、笑わないで聞いてくれたの、キミがはじめて」']]],
+  ['「でも飛ばすけどね、広告」',{f:-2},[['t','pout','「いまの流れで！？ 血も涙もCMもない……！」']]]
+ ],[['t','ad','「この流れで見てくれるの！？ わかってる……キミ、わかってるよ……！」'],['m','感動のあまり、彼女はブラウン管テレビを抱きしめていた。']]],
+ ['t','ad','「というわけで、部の活動内容はひとつ！ 広告を、見る！ 以上！」'],
+ ['m','『研究』はどこへ行ったのだろう。']],
+4:[['bg','rain'],
+ ['m','下校時刻。昇降口の外は、どしゃ降りだった。傘はない。'],
+ ['t','smile','「お困りですか、お客さま」'],
+ ['m','振り向くと、告葉がビニール傘を掲げていた。傘の全面に、でかでかと文字が書いてある。'],
+ ['y','「『広告研究部 部員募集中』……」'],
+ ['t','ad','「自作の広告傘！ 歩くだけで宣伝になる、すぐれもの！」'],
+ ['t','normal','「入ってく？ ただし、傘の広告がよく見えるように、ゆっくり歩くこと」'],
+ ['c',[
+  ['「じゃあ、ゆっくり帰ろうか」',{f:3,h:3},[['t','blush','「……う、うん。ゆっくりね。……広告のためだからね？」'],['m','肩が触れるたび、彼女は『インプレッション、インプレッション』と小声で唱えていた。']]],
+  ['「走って帰るからいい」',{f:-2},[['t','pout','「風邪ひいても知らないよ！ ……風邪薬の広告なら、紹介できるけど！」'],['m','結局、傘に押し込まれた。']]]
+ ],[['t','smile','「雨宿りしながら1本ね！ 雨の日は視聴完了率が上がるんだよ、豆知識！」'],['m','見終わるころ、雨は少しだけ弱くなっていた。']]],
+ ['m','帰り道。傘をたたく雨の音だけが続く。'],
+ ['t','normal','「……ねえ。キミは、なんで付き合ってくれるの？ わたしの、こういうのに」'],
+ ['y','「さあ。なんでだろうな」'],
+ ['t','smile','「ふふ。答えは広告のあとで、ってやつだ」']],
+5:[['bg','club'],
+ ['m','金曜日の放課後。部室の告葉は、めずらしく静かだった。'],
+ ['t','sad','「……生徒会から、通知がきたの。日曜の時点でノルマに届いてなければ、部室は明け渡し」'],
+ ['t','sad','「わかってたんだ。いまどき、わざわざ広告を見たい人なんていないって」'],
+ ['t','normal','「ねえ、キミ。わたしから『広告見て』を取ったら、何が残ると思う？」'],
+ ['c',[
+  ['「告葉が残るだろ。それで十分だ」',{f:4,h:4},[['t','surprise','「…………」'],['t','blush','「……ずるい。そういうの、15秒じゃ受け止めきれないんだけど」'],['t','smile','「……ありがと。ちょっと元気、出た」']]],
+  ['「静かでいいんじゃないか」',{f:-3},[['t','pout','「ひどい！ いまのは励ますとこ！ 視聴者の声が冷たい！」'],['t','normal','「……でも、怒ったらちょっと元気出た。ばか」']]]
+ ],[['t','surprise','「……え、いま？ この空気で？」'],['t','smile','「……ふふっ。あははっ。ほんとキミって、最高のお客さまだね」'],['m','笑ってはくれた。けれどそれは、僕が言うべきだった言葉の代わりには、ならなかった気がする。']]],
+ ['t','normal','「よし、決めた。明日、土曜日。付き合ってほしいところがあるの」'],
+ ['t','smile','「ノルマとか、成果とか、いったん置いといて。……いい？」']],
+6:[['bg','street'],
+ ['m','土曜日。待ち合わせの商店街に、制服姿の告葉が立っていた。'],
+ ['t','smile','「おはよ！ 今日は部活動だから制服です。……私服を選べなかったわけじゃないからね？」'],
+ ['m','二人で商店街を歩く。告葉は看板を見るたびに立ち止まり、解説を始める。'],
+ ['t','ad','「見て、あのキャッチコピー！ 7文字で泣かせにきてる！」'],
+ ['t','normal','「……あ。ごめん。今日は広告の話、しないつもりだったのに」'],
+ ['y','「無理しなくていいよ」'],
+ ['t','blush','「む、無理じゃないもん。今日はね、キミに、わたしのことを見てほしくて……」'],
+ ['t','surprise','「って、これじゃわたしが広告みたいじゃん！」'],
+ ['c',[
+  ['「じゃあ今日は、告葉を見る日ってことで」',{f:4,h:4},[['t','blush','「〜〜〜っ！ す、スキップ！ いまのスキップ！！」'],['m','耳まで真っ赤にして、彼女は3歩先を歩き出した。スキップは、できていなかった。']]],
+  ['「看板の話、続けていいよ」',{f:2,h:1},[['t','smile','「いいの？ じゃあ遠慮なく！ あっちの看板はね——」'],['m','結局、商店街の看板を端から端まで解説された。楽しそうで何よりだ。']]]
+ ],[['t','ad','「デート中に広告を見てくれる人、はじめて……！ 好感度が上がる音がする……！」'],['m','それは、僕に聞こえてはいけない音ではないだろうか。']]],
+ ['bg','park',1],
+ ['m','夕暮れの公園。ベンチに並んで座る。'],
+ ['t','normal','「明日で、1週間だね」'],
+ ['t','smile','「どうなっても、キミに声をかけてよかった。5秒でスキップされなくて、ほんとによかった」'],
+ ['t','blush','「明日の夕方、学校の屋上に来て。……だいじな、お知らせがあります」']]
+};
+const DAY7=[['bg','roof'],
+ ['m','日曜日の夕方。休日の校舎は静かで、屋上には風の音しかなかった。'],
+ ['t','normal','「来てくれたんだ。……ありがと」'],
+ ['t','normal','「この1週間のこと、ぜんぶ覚えてるよ。キミが見てくれた広告は、{ads}本」'],
+ ['t','blush','「それでね。わたし、キミに言わなきゃいけないことがあるの」'],
+ ['m','告葉は深く息を吸った。——僕は。'],
+ ['c',[
+  ['黙って、最後まで聞く',{h:2},[['m','僕は何も言わず、彼女の言葉を待った。']]],
+  ['「その前に、僕からも話がある」',{f:3,h:3},[['t','surprise','「えっ。……さ、先にわたしから言わせて。お願い」']]]
+ ],[['t','pout','「……いま！？ この場面で！？」'],['t','smile','「……もう。ほんと、キミらしいなあ」']]]
+];
+const QUOTA=[
+ ['t','blush','「……見てくれた？ いまの、わたしの手づくり広告」'],
+ ['t','smile','「これで5本！ ノルマ達成！ 広告研究部、存続だよ！ キミのおかげ！」'],
+ ['t','shy','「……達成しちゃったら、もうキミに『見て』って言う理由、なくなっちゃうね」'],
+ ['t','blush','「……それでも、また、見てくれる？ 広告も。……わたしも」']
+];
+const AD_REACT={
+ 1:[['t','ad','「見た！？ 最後まで見たよね！？ 部員以外の人が、最後まで……！」'],['t','smile','「記念すべき1本目だよ。ノルマまで、あと4本！」']],
+ 2:[['t','smile','「2本目！ リピーターだ！ リピーターは宝だって、おばあちゃんが言ってた」']],
+ 3:[['t','blush','「3本目……。ねえ、もしかして、わたしのために見てくれてる？」'],['t','surprise','「い、言わなくていい！ 広告のためってことにしとく！」']],
+ 4:[['t','ad','「4本目！ あと1本でノルマ達成だよ！」'],['t','blush','「次の広告はね……わたしが、つくるから。楽しみにしてて」']]
+};
+const AD_MORE=[
+ [['t','ad','「ノルマは終わったのに見てくれるの！？ それはもう……愛では！？ 広告への！」']],
+ [['t','smile','「いい視聴っぷり！ ほれぼれしちゃう！」']],
+ [['t','normal','「……ねえ。広告もいいけど、たまには、わたしとも話してね？」'],['t','blush','「……なんて、わたしが言うのも変か」']]
+];
+const TALK=[
+ [['bg','class',1],['t','normal','「好きな食べ物？ たい焼き！ 理由はね、包み紙に広告が刷れるから！」'],['y','「味の話は？」'],['t','smile','「味も好きだよ。あんこ派。……キミは、頭から食べる？ しっぽから？」'],['m','どうでもいい話を10分した。告葉は、広告の話をしていないときも、よく笑う。']],
+ [['bg','club',1],['t','normal','「将来の夢？ CMプランナー！ 15秒で人を泣かせるのが目標」'],['t','smile','「15秒ってね、深呼吸3回ぶんなんだよ。そのあいだに、誰かの人生にちょっとだけおじゃまするの」'],['y','「おじゃまする自覚はあるんだ」'],['t','pout','「あるよ！ だからこそ、おじゃました分だけ、いいもの置いて帰りたいの」']],
+ [['bg','class',1],['t','normal','「ねえ、キミのスマホ見せて。……変なアプリ、入れてないよね？」'],['y','「変なアプリって」'],['t','sad','「ほら、その……広告を、消しちゃうやつ……」'],
+  ['c',[['「入れてないよ」',{f:2,h:2},[['t','smile','「よかったぁ……！ 信じてた！ 画面の下のバナーまで愛せる人だって！」']]],['「入れてるけど」',{f:-3},[['t','surprise','「あーあーあー聞こえない！ わたしの前でその話は禁止！！」'],['m','告葉は耳をふさいで走り去った。']]]],
+   [['t','ad','「言葉より行動で示すタイプ……！ 信頼度がカンストしました！」']]]],
+ [['bg','roof',1],['t','normal','「スキップボタンってさ、5秒後に出るでしょ。あの5秒に、作る人は命かけてるんだよ」'],['t','normal','「5秒で『もうちょっと見たい』って思ってもらえなかったら、おしまい。きびしい世界」'],['t','blush','「……だからね。初日にキミが、5秒すぎても話を聞いてくれたの、ほんとにうれしかったんだ」'],['m','風が吹いて、彼女の髪留めがきらりと光った。']],
+ [['bg','class',1],['y','「その髪留めの『AD』って、何？」'],['t','smile','「これ？ 表示義務！ 『この人物の発言には広告が含まれます』っていう」'],['y','「律儀だな……」'],['t','normal','「ステマはだめ、ぜったい。好きなものは、堂々と好きって言うの」'],['t','blush','「……だから、その。キミのことも、そのうち、堂々と……な、なんでもない！」']]
+];
+const TALK_FB=[['t','smile','「今日はね、とくに話題はないの。……ないけど、となり、いい？」'],['m','何を話すでもなく、並んで過ごした。それはそれで、悪くない時間だった。']];
+const DATE=[
+ [['bg','street'],['m','商店街のたい焼き屋に寄り道した。'],['t','smile','「見て、この包み紙！ 裏に商店街の広告が入ってるの。食べ終わるまで目に入る、完璧な設計！」'],
+  ['c',[['「半分こしよう」',{f:3,h:3},[['t','blush','「は、半分こ……。それは、その、広告枠の共同出稿みたいな……」'],['m','例えはよくわからなかったが、うれしそうなのは伝わった。']]],['「包み紙より中身を見なよ」',{f:1,h:1},[['t','smile','「中身も見てるよ！ ……あ、あんこが多い。当たりだ」']]]],
+   [['t','ad','「たい焼きを待つ時間に1本！ すきま時間の活用、えらい！」']]]],
+ [['bg','cafe'],['m','駅前のカフェ。運ばれてきたラテには、ラテアートで二次元コードが描かれていた。'],['t','ad','「すごい！ 読み取るとクーポンが出るんだって！ 飲むのがもったいない……！」'],
+  ['c',[['「写真を撮ってあげる」',{f:3,h:3},[['t','smile','「いいの？ じゃあ……ラテだけじゃなくて、わたしも入れてね」'],['m','画面の中の告葉は、ラテより先に、こっちを見て笑っていた。']]],['「先に飲んじゃうよ」',{f:2,h:2},[['t','surprise','「ああっ、広告が崩れる！ ……ふふ、泡のヒゲ、ついてるよ」'],['m','彼女がナプキンを差し出してくれた。']]]],
+   [['t','smile','「カフェのWi-Fiで見る広告は格別だよね！ わかる〜！」'],['m','わからない。']]]],
+ [['bg','park'],['m','夕方の公園。ベンチの背もたれには、色あせた不動産屋の広告がついている。'],['t','normal','「このベンチの広告、わたしが小学生のころからあるの。もう電話番号、つながらないんだって」'],['t','sad','「誰にも届かなくなった広告って、ちょっとさみしいよね」'],
+  ['c',[['「いま、二人には届いてるよ」',{f:3,h:4},[['t','surprise','「……あ」'],['t','blush','「……そっか。そうだね。キミって、ときどきコピーライターみたいなこと言う」']]],['「新しい広告に替えればいいのに」',{f:1},[['t','normal','「それも正しいんだけどね。……古いのも、好きなの」']]]],
+   [['t','smile','「古い広告の前で、新しい広告を見る……。世代交代だね、エモいね」']]]],
+ [['bg','station'],['m','夜の駅前。ビルの大型ビジョンが、次々と映像を切り替えていく。'],['t','ad','「きれい……。イルミネーションより、わたしはこっち派」'],['t','normal','「あの画面、1日に何千回も同じ映像を流すの。誰かひとりが立ち止まってくれるのを、ずっと待ちながら」'],
+  ['c',[['「じゃあ、もう少し立ち止まっていこう」',{f:3,h:3},[['t','blush','「……うん。じゃあ、あと15秒だけ。……やっぱり30秒」'],['m','結局、ずいぶん長いこと、二人でビジョンを見上げていた。']]],['「寒いから帰ろう」',{},[['t','pout','「ロマンがない！ ……でも、たしかに寒い。肉まんの広告が効いてきた」']]]],
+   [['t','ad','「大型ビジョンの下で、手元の広告を……！ マルチスクリーン視聴……！ 上級者……！」']]]],
+ [['bg','station'],['m','映画館に来た。上映前の予告編が終わったところで、告葉が立ち上がる。'],['t','smile','「はー、よかった！ じゃ、帰ろっか！」'],['y','「本編は！？」'],['t','surprise','「えっ、本編も見るの？ 予告がメインじゃなくて？」'],
+  ['c',[['「本編も一緒に見よう」',{f:3,h:3},[['t','smile','「……そっか。予告のあとにも、続きがあるんだね」'],['m','上映中、彼女はずっと静かで、エンドロールでこっそり泣いていた。']]],['「じゃあ帰るか……」',{f:1},[['t','normal','「うん！ ……あれ、チケット代もったいなくない？」'],['m','気づくのが遅い。']]]],
+   [['t','ad','「予告のあとに広告！ おかわり！ キミ、通だね！」']]]]
+];
+const DATE_FB=[['bg','street'],['m','二人であてもなく歩いた。告葉は看板を見つけるたびに立ち止まる。'],['t','smile','「あ、あの看板、新しくなってる！ ……ごめん、また立ち止まっちゃった」'],['m','彼女と歩くと、いつもの道が少し長くなる。']];
+const GIFT=[
+ [['bg','class',1],['m','駅前でもらったポケットティッシュを渡してみた。'],['t','ad','「こ、これは……！ 裏に広告の入った、ポケットティッシュ……！」'],['t','smile','「日本が世界に誇る広告文化だよ！ 一生大事にする！ 使わない！」'],['m','使ってほしい。']],
+ [['bg','club',1],['m','花屋で買った小さな花束を渡した。'],['t','surprise','「……え。これ、広告、ついてないよ？」'],['y','「ついてないよ。ただのプレゼント」'],['t','blush','「……スポンサーも、クーポンも、なんにもついてないのに」'],['t','shy','「……なんでだろ。いちばん、うれしい」'],['fx',{h:2}]],
+ [['bg','club',1],['m','商店街で配っていた、広告入りのうちわを渡した。'],['t','smile','「うちわ！ あおぐたびに広告が視界を横切る、すぐれもの！」'],['t','normal','「はい、キミも入って。……ほら、風、いくよ」'],['m','部室の窓辺で、ひとつのうちわを交代であおぎ合った。']]
+];
+const GIFT_FB=[['m','購買で買ったパンを差し入れた。'],['t','smile','「ありがと！ ……袋の裏の広告まで、ちゃんと読むね」']];
+const NUDGE=[
+ '「どうする？ ちなみに、いちばん下のボタンが、おすすめです」',
+ '「ねえ、あの光ってるボタン、気にならない？ 気になるよね？」',
+ '「わたしは何でもいいよ！ ……広告でも、広告でも、広告でも！」',
+ '「好感度を上げたいなら……ごにょごにょ……こうこく……ごにょごにょ」',
+ '「選択肢は4つあるけど、実質1つだと思うな。わたしは」',
+ '「いま広告を見ると、なんと！ わたしがよろこびます！」'
+];
+const NUDGE_HI=['「今日は……キミのしたいことで、いいよ。……広告でも、いいけど」','「ねえ、どこ行く？ ……あ、いちばん下のボタンは、見なかったことにしてもいいよ。……ちょっとだけ見てほしいけど」'];
+
+/* =====================================================================
+   進行
+   ===================================================================== */
+async function actionMenu(n){
+  hud(`自由行動 ${n}/2`);
+  setExp(S.f>=60?'smile':'normal');showSprite(true);
+  const pool=S.f>=60&&Math.random()<.5?NUDGE_HI:NUDGE;
+  const nm=$('nm');nm.textContent='告葉';nm.style.visibility='visible';nm.style.background='#ff5c8a';
+  $('msg').style.color='#fff';$('msg').textContent=pool[Math.floor(Math.random()*pool.length)];$('nx').hidden=true;
+  const i=await pick([{label:'💬 話しかける'},{label:'🚶 デートに誘う'},{label:'🎁 プレゼントを渡す'},{label:AD_LABEL,ad:true}]);
+  if(i===3){
+    await watchAd(8);
+    const r=AD_REACT[S.ads];
+    if(S.ads===5&&!S.quota){/* ノルマ達成イベントが反応を兼ねる */}
+    else if(r)await run(r);
+    else await run(AD_MORE[(S.ads)%AD_MORE.length]);
+    await quotaCheck();
+  }else{
+    const key=['talk','date','gift'][i],arr=[TALK,DATE,GIFT][i],fb=[TALK_FB,DATE_FB,GIFT_FB][i],gain=[{f:3,h:2},{f:4,h:3},{f:3,h:2}][i];
+    const k=S.used[key]++;
+    await run(k<arr.length?arr[k]:fb);
+    fx(gain);
+  }
+}
+const ENDS={
+ TRUE:['TRUE END','このゲームは恋です。'],
+ AD:['AD END','最優良ユーザー'],
+ PURE:['PURE END','サービス終了のお知らせ'],
+ NORMAL:['NORMAL END','また見てね'],
+ BAD:['BAD END','スキップされた女']
+};
+async function ending(){
+  let id;
+  if(S.f>=75)id=S.h>=18?(S.ads>=5?'TRUE':'PURE'):'AD';
+  else id=S.f>=45?'NORMAL':'BAD';
+  const L={
+   TRUE:[
+    ['t','blush','「『広告』の『告』って字はね。『告白』の『告』でもあるんだよ」'],
+    ['t','blush','「広く告げるのが、広告。……でもこれは、キミひとりにだけ、告げたいこと」'],
+    ['t','smile','「好きです。広告を見てくれるキミも、広告じゃないわたしを見てくれるキミも」'],
+    ['y','「……僕も、好きだ」'],
+    ['t','shy','「……っ。視聴完了率、100%……」'],
+    ['m','後日。広告研究部は存続が決まった。提出された報告書には『部員2名』と書かれていたらしい。'],
+    ['t','ad','「というわけで彼氏くん！ 記念に広告、もう1本どう？」'],
+    ['m','たぶん一生、この調子なのだと思う。——それも、悪くない。']],
+   AD:[
+    ['t','ad','「発表します！ キミは、わが部はじまって以来の……最優良ユーザーです！！」'],
+    ['y','「……ユーザー」'],
+    ['t','smile','「表彰状もあるよ！ 『貴殿は多数の広告を最後まで視聴し』——」'],
+    ['m','告葉は心の底からうれしそうだった。その笑顔は本物だ。ただ、彼女が見ているのは『僕』ではなく、『視聴者』なのかもしれない。'],
+    ['t','normal','「これからも、ずっと見てね。……広告」'],
+    ['m','部は存続した。僕は名誉視聴者になった。恋人には、なれなかった。'],
+    ['m','（ヒント：広告以外の時間も、彼女と過ごしてみよう）']],
+   PURE:[
+    ['t','sad','「広告研究部は、今日で廃部になりました。ノルマ、届かなかったから」'],
+    ['y','「……ごめん。僕がもっと見ていれば」'],
+    ['t','smile','「ううん。キミは、広告じゃなくて、わたしを見てくれたでしょ」'],
+    ['t','blush','「部はなくなっちゃったけど。広告なしでも、そばにいてくれる人ができたから。……好きだよ」'],
+    ['m','こうして僕たちは付き合いはじめた。'],
+    ['m','なお、広告収入の途絶えた学園は、翌月『サービス終了のお知らせ』を掲示した。'],
+    ['t','pout','「……やっぱり、ちょっとは見てほしかったな！？」'],
+    ['m','（ヒント：愛だけではサーバー代は払えない。広告も5本は見よう）']],
+   NORMAL:[
+    ['t','smile',S.ads>=5?'「広告研究部は、なんとか存続！ キミのおかげだよ」':'「広告研究部は……廃部になっちゃった。でも、同好会として続けるつもり」'],
+    ['t','normal','「楽しい1週間だったよ。ほんとに」'],
+    ['t','smile','「これからも、ともだちでいてね。それで、たまにでいいから——」'],
+    ['t','ad','「広告、見にきてね！」'],
+    ['m','彼女との距離は、縮まったような、変わらないような。続きは、広告のあとで——なのかもしれない。'],
+    ['m','（ヒント：もっと好感度を上げよう。いちばん手っ取り早い方法は、彼女がずっと教えてくれている）']],
+   BAD:[
+    ['t','sad','「……広告研究部は、廃部になりました」'],
+    ['t','sad','「キミにとってわたしは、5秒待って飛ばすだけの、じゃまな広告だったのかな」'],
+    ['t','normal','「ううん、いいの。慣れてるから。スキップされるのは」'],
+    ['hide'],
+    ['m','彼女は一度だけ笑って、屋上を出ていった。'],
+    ['m','翌日から、校門で声をかけてくる女子はいなくなった。静かな朝は、思ったより、ずっと味気なかった。']]
+  }[id];
+  await run(L);
+  const got=store.get('kokoku_ends')||[];
+  if(!got.includes(id))got.push(id);
+  store.set('kokoku_ends',got);store.del('kokoku_save');
+  showEnd(id,`好感度 ${S.f} ／ 広告視聴 ${S.ads}本 ／ 回収したエンディング ${got.length} / 5`,'タイトルへ戻る',titleScreen);
+}
+
+/* ---------- エンディングイラスト ---------- */
+const heart=(x,y,s,f='#ff5c8a',o=1)=>`<path transform="translate(${x} ${y}) scale(${s})" d="M0 8 C-22 -10 -9 -26 0 -13 C9 -26 22 -10 0 8Z" fill="${f}" opacity="${o}"/>`;
+const girl=(n,x,y,w)=>sprite(n).replace('<svg ',`<svg x="${x}" y="${y}" width="${w}" height="${w*620/300}" `);
+const CG={
+  TRUE(){
+    let s=BG.roof()+R(0,0,1280,720,'#ff8fb0','opacity=".2"');
+    [[150,160,3],[300,330,1.6],[1050,140,2.6],[1150,380,1.8],[930,300,1.2],[220,480,1.3],[1000,520,2]].forEach((h,i)=>s+=heart(h[0],h[1],h[2],i%2?'#fff':'#ff5c8a',.75));
+    s+=girl('shy',400,30,480);
+    s+=`<g transform="translate(0 -95) rotate(-6 640 610)">`+R(490,560,300,100,'#fff','stroke="#ff5c8a" stroke-width="6" rx="12"')+TX(640,598,24,'視聴完了率','#e63970')+TX(640,642,38,'100%','#e63970')+`</g>`+heart(820,465,1.6);
+    return wrap(s);
+  },
+  AD(){
+    let s=BG.club()+R(0,0,1280,720,'#ffd400','opacity=".18"');seed=3;
+    const cs=['#ff5c8a','#ffd400','#4dabf7','#69db7c','#fff'];
+    for(let i=0;i<70;i++){const x=rnd()*1280,y=rnd()*520;s+=`<rect x="${x}" y="${y}" width="14" height="8" fill="${cs[i%5]}" transform="rotate(${rnd()*180} ${x} ${y})"/>`;}
+    s+=girl('ad',400,30,480);
+    s+=`<g transform="translate(-350 -170) rotate(-4 640 590)">`+R(440,470,400,240,'#fffbe8','stroke="#c9a227" stroke-width="12"')+R(456,486,368,208,'none','stroke="#c9a227" stroke-width="2"')+TX(640,540,42,'表 彰 状','#7a5a00')+TX(640,590,28,'最優良ユーザー 殿','#333')+TX(640,628,16,'貴殿は多数の広告を最後まで視聴し','#555')+TX(640,652,16,'当部の存続に多大なる貢献を——','#555')+TX(690,686,16,'広告研究部 部長 広瀬告葉','#333');
+    s+=`<circle cx="500" cy="672" r="22" fill="#e63950"/>`+TX(500,679,18,'告')+`</g>`;
+    return wrap(s);
+  },
+  PURE(){
+    let s=BG.gate()+R(0,0,1280,720,'#2a1a55','opacity=".38"');
+    s+=`<g transform="rotate(-3 330 360)">`+R(110,190,440,330,'#fff','stroke="#333" stroke-width="6"')+R(110,190,440,70,'#e63950')+TX(330,238,30,'サービス終了のお知らせ')+TX(330,320,22,'長らくのご愛顧、','#333')+TX(330,356,22,'誠にありがとうございました。','#333')+TX(330,420,18,'理由：広告収入の不足','#777')+TX(330,480,22,'私立アドバンス学園','#333')+`</g>`;
+    s+=girl('blush',680,30,480)+heart(1130,220,3,'#ff5c8a',.9)+heart(1190,330,1.5,'#fff',.8);
+    return wrap(s);
+  },
+  NORMAL(){
+    let s=BG.street()+girl('smile',300,30,480);
+    s+=`<polygon points="800,260 760,330 860,280" fill="#fff" stroke="#e63970" stroke-width="5"/><ellipse cx="990" cy="210" rx="240" ry="105" fill="#fff" stroke="#e63970" stroke-width="5"/><polygon points="806,258 772,318 852,276" fill="#fff"/>`+TX(990,205,50,'また見てね！','#e63970')+TX(990,258,24,'（広告を）','#888');
+    return wrap(s);
+  },
+  BAD(){
+    let s=BG.roof()+R(0,0,1280,720,'#0e1636','opacity=".62"');
+    s+=`<ellipse cx="648" cy="577" rx="60" ry="10" fill="#000" opacity=".4"/><g transform="translate(0 -75) rotate(-16 640 630)">`+R(596,612,88,38,'#ffd400','stroke="#fff" stroke-width="4" rx="7"')+TX(640,641,28,'AD','#222')+`</g>`;
+    return wrap(s);
+  }
+};
+const cgCache={};
+const cgUrl=id=>cgCache[id]||(cgCache[id]='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(CG[id]()));
+let endBack=null;
+function showEnd(id,stats,btn,back){
+  $('endImg').src=cgUrl(id);
+  $('endK').textContent=ENDS[id][0];$('endN').textContent=ENDS[id][1];$('endS').textContent=stats+'　（イラストをクリックで文字を隠す）';
+  $('endBtn').textContent=btn;endBack=back;$('endPanel').hidden=false;$('end').hidden=false;
+}
+const HINT={TRUE:'広告も、彼女自身も、どちらも大切に。',AD:'ひたすら広告を見続けると……？',PURE:'広告を見ずに、彼女とだけ向き合うと……？',NORMAL:'ほどほどの距離感で1週間を過ごす。',BAD:'彼女を冷たくあしらい続ける。'};
+function gallery(){
+  const got=store.get('kokoku_ends')||[],grid=$('galGrid');grid.innerHTML='';
+  Object.keys(ENDS).forEach(id=>{
+    const el=document.createElement('button'),ok=got.includes(id);
+    el.className='gc'+(ok?' open':'');
+    el.innerHTML=ok?`<img src="${cgUrl(id)}" alt=""><b>${ENDS[id][0]}</b><small>${ENDS[id][1]}</small>`:`<div class="lock">？</div><b>${ENDS[id][0]}</b><small>ヒント：${HINT[id]}</small>`;
+    if(ok)el.onclick=()=>showEnd(id,'エンディングイラスト','一覧へ戻る',()=>{$('end').hidden=true;});
+    grid.appendChild(el);
+  });
+  $('end').hidden=true;$('gal').hidden=false;
+}
+
+/* ---------- 進行・セーブ ---------- */
+function saveGame(phase){store.set('kokoku_save',{phase,S:JSON.parse(JSON.stringify(S)),adOrder});}
+async function game(sv){
+  ++GEN;onAdv=null;
+  if(sv){Object.assign(S,sv.S);adOrder=sv.adOrder||[];}
+  else{Object.assign(S,{day:1,f:10,h:0,ads:0,quota:false,label:'',used:{talk:0,date:0,gift:0}});adOrder=[];}
+  let phase=sv?sv.phase:0; // 0=その日の最初 / 1=自由行動1の前 / 2=自由行動2の前
+  $('end').hidden=true;$('gal').hidden=true;$('title').hidden=true;$('ad').hidden=true;$('home').hidden=false;
+  $('choices').hidden=true;side(false);$('card').classList.remove('on');
+  $('msg').textContent='';$('nm').style.visibility='hidden';$('nx').hidden=true;showSprite(false);
+  for(;S.day<=6;S.day++){
+    if(phase===0){
+      setBg(DAYS[S.day][0][1]);showSprite(false);hud('');saveGame(0);
+      await dayCard(`${S.day}日目`,`${WD[S.day]}曜日 ／ ノルマ期限まで あと${7-S.day}日`);
+      await run(DAYS[S.day]);
+    }else{setBg(S.bg);hud();}
+    if(phase<=1){saveGame(1);await actionMenu(1);}
+    saveGame(2);await actionMenu(2);
+    phase=0;
+  }
+  S.day=7;setBg('roof');showSprite(false);hud('');saveGame(0);
+  await dayCard('最終日','日曜日 ／ 屋上');
+  await run(DAY7);
+  await ending();
+}
+function titleScreen(){
+  ++GEN;onAdv=null; // 進行中のシナリオを止める（進行は自動セーブ済み）
+  const got=store.get('kokoku_ends')||[],sv=store.get('kokoku_save');
+  $('ends').textContent=got.length?`回収済みエンディング：${got.length} / 5`:'';
+  $('contBtn').hidden=!sv;
+  if(sv)$('contBtn').textContent=`▶ つづきから（${sv.S.day>=7?'最終日':sv.S.day+'日目'}）`;
+  $('titleGirl').innerHTML=sprite('ad');
+  $('end').hidden=true;$('gal').hidden=true;$('ad').hidden=true;$('choices').hidden=true;side(false);$('card').classList.remove('on');
+  $('home').hidden=true;$('title').hidden=false;music('day');
+}
+$('startBtn').onclick=e=>{e.stopPropagation();auInit();game();};
+$('contBtn').onclick=e=>{e.stopPropagation();auInit();const sv=store.get('kokoku_save');if(sv)game(sv);};
+$('galBtn').onclick=e=>{e.stopPropagation();gallery();};
+$('endImg').onclick=()=>{$('endPanel').hidden=!$('endPanel').hidden;};
+$('galBack').onclick=()=>{$('gal').hidden=true;};
+$('home').onclick=e=>{e.stopPropagation();sfx('pick');titleScreen();};
+$('endBtn').onclick=e=>{e.stopPropagation();if(endBack)endBack();};
+$('title').addEventListener('click',e=>e.stopPropagation());
+$('end').addEventListener('click',e=>e.stopPropagation());
+$('gal').addEventListener('click',e=>e.stopPropagation());
+setBg('gate');titleScreen();
+</script>
+</body>
+</html>
